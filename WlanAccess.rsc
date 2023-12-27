@@ -1,7 +1,7 @@
 # Script for blocking unknown wifi clients by drPioneer
 # https://forummikrotik.ru/viewtopic.php?p=91303#p91303
 # tested on ROS 6.49.10 (capsman) & ROS 7.12 (wifiwave2)
-# updated 2023/12/26
+# updated 2023/12/27
 
 :do {
     # --------------------------------------------------------------------------------- # wifiwave2 package search function
@@ -39,16 +39,16 @@
     :if ([:len [/ip dhcp-server lease find]]=0) do={:put ("Wifi clients not found in DHCP list.")}
     :put ("List of allowed wifi clients:");
     :foreach wlanClients in=[/ip dhcp-server lease find comment~"wifi"] do={
+        :local presence false;
         :local wlanMAC ([/ip dhcp-server lease get $wlanClients mac-address]);
         :local wlanComment ([$ReplacingChars [/ip dhcp-server lease get $wlanClients comment]]);
-        :local presence 0;
         :set counter ($counter+1);
         :put ("$counter $wlanMAC $wlanComment");
         :foreach accessList in=[[:parse "$interface access-list find"]] do={
             :local accessMAC ([[:parse "$interface access-list get $accessList mac-address"]]);
-            :if ($wlanMAC=$accessMAC) do={:set presence ($presence+1)}
+            :if ($wlanMAC=$accessMAC) do={:set presence true}
         }
-        :if (presence=0) do={[[:parse "$interface access-list add mac-address=$wlanMAC comment=\"$wlanComment\" action=accept"]]}
+        :if ($presence) do={[[:parse "$interface access-list add mac-address=$wlanMAC comment=\"$wlanComment\" action=accept"]]}
     }
     [[:parse "$interface access-list add action=reject"]];
 } on-error={                                                                            # when emergency break script ->
